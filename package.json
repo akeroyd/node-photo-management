@@ -3,6 +3,8 @@
   "version": "1.0.1",
   "author": "Marcelo Somers",
   "dependencies": {
+    "exif": "^0.6.0",
+    "moment": "^2.24.0",
     "mv": "~2.0.3"
   }
 }

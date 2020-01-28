@@ -2,13 +2,14 @@
  * Synology/Node Photo Organization Script
  */
 
+const DRYRUN = false;
 
 /**
  * Source Directory Configuration
  * This is the source directory where our photo and video files live
  * IMPORTANT: Make sure your path ends with a /
  */
-var sourceDirectory = "./";
+var sourceDirectory = "./input";
 
 
 
@@ -19,8 +20,8 @@ var sourceDirectory = "./";
  * so this should be the master directories for photos and videos.
  * IMPORTANT: Make sure your path ends with a /
  */
-var photosDestination = "./";
-var videosDestination = "./";
+var photosDestination = "./output";
+var videosDestination = "./output";
 
 
 
@@ -51,8 +52,11 @@ var videoExtensions = [
  * ------------ DON'T EDIT BELOW THIS UNLESS YOU KNOW WHAT YOU'RE DOING ------------
  */
 
-var fs = require("fs")
-    mv = require("mv");
+const fs = require("fs")
+    mv = require("mv")
+    ExifImage = require('exif').ExifImage
+    moment = require('moment');
+ 
 
 // Define our months to generate folder names
 var months = [
@@ -71,7 +75,7 @@ var months = [
 ]
 
 // Read the directory defined above and save list of files to an array, files
-fs.readdir(sourceDirectory, function(err, files) {
+fs.readdir(sourceDirectory, async function(err, files) {
     if (err) {
         throw err;
     }
@@ -101,68 +105,73 @@ fs.readdir(sourceDirectory, function(err, files) {
     // Loop over each image file
     // Get date metadata from the file name
     // Move the file
-    for (var i=0, len = images.length; i < len; i++) {
-        var file = images[i];
+    for (let i=0, len = images.length; i < len; i++) {
+        const file = images[i];
 
         // Get the year and month from the file name
-        var fileDate = getDateInfo(file);
+        const fileDate = await getExifDate(file);
 
         // Define paths
-        var existingFilePath = sourceDirectory + "/" + file;
-        var newFilePath = photosDestination + fileDate.year + "/" + fileDate.monthNumber + " - " + fileDate.monthName + "/" + file;
+        const existingFilePath = sourceDirectory + "/" + file;
+        const newFilePath = `${photosDestination}/${fileDate.format('YYYY/MM')}/${file}`;
 
         // Move the file
         // mkdirp: Make the required directories if they don't exist
         // clobber: Don't overwrite any files
-        mv(existingFilePath, newFilePath, {mkdirp: true, clobber: false}, function(err) {
-            if(err) {
-                throw err;
-            } else {
-                console.log("Moving " + file + " to " + newFilePath);   
-            }
-        });
+        if (!DRYRUN) {
+            mv(existingFilePath, newFilePath, {mkdirp: true, clobber: false}, function(err) {
+                if(err) {
+                    throw err;
+                } else {
+                    console.log("Moving " + file + " to " + newFilePath);   
+                }
+            });
+        } else {
+            console.log("[DRYRUN] Would move " + file + " to " + newFilePath);   
+        }
     }
 
     // Loop over each video file
     // Get date metadata from the file name
     // Move the file
-    for (var i=0, len = videos.length; i < len; i++) {
-        var file = videos[i];
+    for (let i=0, len = videos.length; i < len; i++) {
+        const file = videos[i];
 
         // Get the year and month from the file name
-        var fileDate = getDateInfo(file);
+        const fileDate = await getExifDate(file);
 
         // Define paths
-        var existingFilePath = sourceDirectory + "/" + file;
-        var newFilePath = videosDestination + fileDate.year + "/" + fileDate.monthNumber + " - " + fileDate.monthName + "/" + file;
+        const existingFilePath = sourceDirectory + "/" + file;
+        const newFilePath = `${photosDestination}/${fileDate.format('YYYY/MM')}/${file}`;
 
         // Move the file
         // mkdirp: Make the required directories if they don't exist
         // clobber: Don't overwrite any files
-        mv(existingFilePath, newFilePath, {mkdirp: true, clobber: false}, function(err) {
-            if(err) {
-                throw err;
-            } else {
-                console.log("Moving " + file + " to " + newFilePath);   
-            }
-        })
+        if (!DRYRUN) {
+            mv(existingFilePath, newFilePath, {mkdirp: true, clobber: false}, function(err) {
+                if(err) {
+                    throw err;
+                } else {
+                    console.log("Moving " + file + " to " + newFilePath);   
+                }
+            })
+        } else {
+            console.log("[DRYRUN] Would move " + file + " to " + newFilePath);   
+        }
     }
 })
 
 // Function to get the date information
-function getDateInfo(file) {
-    var year = file.substring(0,4);
-    var monthNumber = file.substring(5,7);
-    var monthName = months[monthNumber - 1];
+function getExifDate(file) {
+    const exifDateFormat = 'YYYY:MM:DD hh:mm:ss'; //2011:01:01 10:00:00
 
-    // Add a leading 0 to single digit months
-    if (monthNumber.length === 1) {
-        monthNumber = "0" + month;
-    }
-
-    return {
-        year: year,
-        monthNumber: monthNumber,
-        monthName: monthName
-    };
+    return new Promise((resolve, reject) => {
+        ExifImage({ image : `${sourceDirectory}/${file}` }, (err, exifData) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(moment(exifData.exif.CreateDate, exifDateFormat));
+            }
+        });
+    });
 }
