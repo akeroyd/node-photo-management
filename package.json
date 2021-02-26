@@ -3,7 +3,9 @@
   "version": "1.0.1",
   "author": "Marcelo Somers",
   "dependencies": {
+    "drivelist": "^9.2.4",
     "exif": "^0.6.0",
+    "inquirer": "^8.0.0",
     "moment": "^2.24.0",
     "mv": "~2.0.3"
   }
